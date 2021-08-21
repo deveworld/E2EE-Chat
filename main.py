@@ -5,7 +5,7 @@ import sys
 import SOCKET
 import ENCRYPT
 
-version = 'E2EE-WORLD-CHAT-vBETA2'
+version = 'E2EE-WORLD-CHAT-vBETA3'
 
 
 def main():

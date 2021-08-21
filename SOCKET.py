@@ -37,7 +37,7 @@ def packet_handler(data):
 
 def get_int(sock):
     data = sock.recv(2048).decode('utf-8')
-    if data.isdigit():
+    if data.isdecimal():
         sock.send('100'.encode('utf-8'))
         data = int(data)
         return data
@@ -190,7 +190,7 @@ def server(port, version, en_data):
     # 8: VALIDATE PUBLIC KEY HASH
     # 100 OK    -> RIGHT KEY
     # 300 WRONG     -> WRONG KEY
-    if client_socket.recv(2048).decode('utf-8') == hashlib.sha256(keys[0]).hexdigest():
+    if client_socket.recv(2048).decode('utf-8') == hashlib.sha256(str(keys[0]).encode('utf-8')).hexdigest():
         client_socket.send('100'.encode('utf-8'))
     else:
         client_socket.send('300'.encode('utf-8'))
@@ -296,7 +296,7 @@ def client(host, port, version):
         # 8: SEND PUBLIC KEY HASH
         # 100 OK    -> RIGHT KEY
         # 300 WRONG     -> WRONG KEY
-        client_socket.send(hashlib.sha256(str(keys[0])).hexdigest().encode('utf-8'))
+        client_socket.send(hashlib.sha256(str(keys[0]).encode('utf-8')).hexdigest().encode('utf-8'))
         if client_socket.recv(2048).decode('utf-8') != "100":
             client_socket.close()
             return
