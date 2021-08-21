@@ -11,6 +11,14 @@ import secrets
 def make_keys(seed, password_org):
     p = make_prime(str(seed)+hashlib.sha512(str(password_org).encode()).hexdigest())
     q = make_prime(str(seed)+hashlib.sha512((str(password_org)+str(seed)).encode()).hexdigest())
+    pi = 1
+    while sympy.is_mersenne_prime(p):
+        p = make_prime(str(pi) + str(seed) + hashlib.sha512(str(password_org).encode()).hexdigest())
+        pi += 1
+    qi = 1
+    while sympy.is_mersenne_prime(1):
+        q = make_prime(str(qi) + str(seed) + hashlib.sha512(str(password_org).encode()).hexdigest())
+        qi += 1
     n = p * q
     totient = (p-1)*(q-1)
     if (totient % 65537) != 0:
