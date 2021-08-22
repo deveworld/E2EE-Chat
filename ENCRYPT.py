@@ -62,21 +62,33 @@ def find_e(totient):
     return e
 
 
-def to_int_list(msg):
-    encoded_list = [ord(c) for c in msg]
-    return encoded_list
+def to_msg(encoded_msg):
+    encoded_msg = str(encoded_msg)[1:]
+    decoded_msg = ''
+    chunk = 0  # chunk is indexing num
+    while len(encoded_msg) > chunk:
+        decoded_msg += chr(int(encoded_msg[chunk:chunk+7]))
+        chunk += 7
+    return decoded_msg
 
 
 def encrypt(msg, e, n):
-    msg = to_int_list(msg)
-    encrypted_msg = []
+    msg = [ord(c) for c in msg]
+    encrypted_msg = ["1"]
+    chunk = 0  # chunk is split socket
     for i in range(len(msg)):
-        encrypted_msg.append(str(pow(msg[i], e, n)))
+        if (int(encrypted_msg[chunk]) >= n) or (len(encrypted_msg[chunk]) >= 1000):
+            # if over (max encrypt size) or (max socket size):
+            encrypted_msg[chunk] = str(pow(int(encrypted_msg[chunk]), e, n))
+            chunk += 1
+            encrypted_msg.append('1')
+        encrypted_msg[chunk] += str(msg[i]).zfill(7)
+    encrypted_msg[chunk] = str(pow(int(encrypted_msg[chunk]), e, n))
     return encrypted_msg
 
 
 def decrypt(encrypted_int, d, n):
-    return chr(pow(int(encrypted_int), d, n))
+    return to_msg(pow(int(encrypted_int), d, n))
 
 
 def make_prime(seed):

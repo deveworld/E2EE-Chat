@@ -5,7 +5,7 @@ import sys
 import SOCKET
 import ENCRYPT
 
-version = 'E2EE-WORLD-CHAT-vBETA3'
+version = 'E2EE-WORLD-CHAT-vGAMMA1.0'
 
 
 def main():
@@ -39,7 +39,7 @@ def setup_server(port="10000000"):
     try:
         SOCKET.server(port, version, en_data)
     finally:
-        print("접속이 종료되었습니다.")
+        print("\n접속이 종료되었습니다.")
 
 
 def setup_client():
