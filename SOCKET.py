@@ -67,13 +67,13 @@ def receive(sock, d, n):
                 receive_data = packet_handler(receive_data)
                 data += ENCRYPT.decrypt(receive_data[1], d, n)
                 if receive_data[0]:
-                    sys.stdout.write('\r상대방: %s\nMe: ' % data)
+                    sys.stdout.write('\rThe other: %s\nMe: ' % data)
                     data = ''
                 else:
                     continue
             else:
                 receive_data = ENCRYPT.decrypt(receive_data, d, n)
-                sys.stdout.write('\r상대방: %s\nMe: ' % receive_data)
+                sys.stdout.write('\rThe other: %s\nMe: ' % receive_data)
         else:
             size_data += receive_data
 
@@ -103,7 +103,7 @@ def make_private_key(my_en_data, other_en_data, password_org):
         del key
         gc.collect()
     except Exception as e:
-        print("암호화 오류: ", e)
+        print("Encryption Error: ", e)
         return False
     else:
         return n, e, d
@@ -115,22 +115,18 @@ def server(port, version, en_data):
     server_socket.bind(('', int(port)))
     server_socket.listen(1)
     client_socket, address = server_socket.accept()
-    print('연결됨: ', address)
+    print('Connected: ', address)
 
     # This E2EE-CHAT PROTOCOL
     #
-    # 1: RECEIVE HASHED PASSWORD
-    # 100 OK    -> RIGHT
-    # 300 WRONG     -> WRONG PASSWORD
-    password_org = input("비밀번호를 입력해주세요: ")
-    password = hashlib.sha256(
-        (hashlib.sha256(str(int(port) ** 2).encode('utf8')).hexdigest() + password_org).encode('utf8')
-    ).hexdigest()
-    if client_socket.recv(2048).decode('utf-8') == password:
+    # 1: RECEIVE VERSION
+    # 100 OK    -> Approved
+    # 200 Not Matched Version   -> not approved
+    if client_socket.recv(2048).decode('utf-8') == version:
         client_socket.send('100'.encode('utf-8'))
     else:
-        print("비밀번호 틀림 ")
-        client_socket.send('300'.encode('utf-8'))
+        print("Version is not compatible.")
+        client_socket.send('200'.encode('utf-8'))
         client_socket.close()
         return
 
@@ -148,14 +144,18 @@ def server(port, version, en_data):
         client_socket.close()
         return
 
-    # 4: RECEIVE VERSION
-    # 100 OK    -> Approved
-    # 200 Not Matched Version   -> not approved
-    if client_socket.recv(2048).decode('utf-8') == version:
+    # 4: RECEIVE HASHED PASSWORD
+    # 100 OK    -> RIGHT
+    # 300 WRONG     -> WRONG PASSWORD
+    password_org = input("Please enter the password: ")
+    password = hashlib.sha256(
+        (hashlib.sha256(str(int(port) ** 2).encode('utf8')).hexdigest() + password_org).encode('utf8')
+    ).hexdigest()
+    if client_socket.recv(2048).decode('utf-8') == password:
         client_socket.send('100'.encode('utf-8'))
     else:
-        print("버전이 호환되지 않음")
-        client_socket.send('200'.encode('utf-8'))
+        print("Wrong Password")
+        client_socket.send('300'.encode('utf-8'))
         client_socket.close()
         return
 
@@ -193,17 +193,20 @@ def server(port, version, en_data):
     if client_socket.recv(2048).decode('utf-8') == hashlib.sha256(str(keys[0]).encode('utf-8')).hexdigest():
         client_socket.send('100'.encode('utf-8'))
     else:
+        print("MITM attack suspected")
         client_socket.send('300'.encode('utf-8'))
+        client_socket.close()
+        return
 
     # 9: SEND START TALK
     # 100 OK    -> READY
     client_socket.send('100'.encode('utf-8'))
     if client_socket.recv(2048).decode('utf-8') != '100':
-        print("알 수 없는 오류")
+        print("Unknown Error")
         client_socket.close()
         return
 
-    print("----------채팅 시작----------")
+    print("----------Start Chat----------")
     thread = start_thread(client_socket, keys)
     try:
         while thread[0].is_alive() and thread[1].is_alive():
@@ -217,21 +220,21 @@ def client(host, port, version):
     try:
         client_socket.connect((host, int(port)))
     except Exception as e:
-        print('연결 오류: ', e)
+        print('Connect Error: ', e)
         return
     else:
         # This E2EE-CHAT PROTOCOL
         #
-        # 1: SEND HASHED PASSWORD
-        # 100 OK    -> RIGHT
-        # 300 WRONG     -> WRONG PASSWORD
-        password_org = input("비밀번호를 입력해주세요: ")
-        password = hashlib.sha256(
-            (hashlib.sha256(str(int(port) ** 2).encode('utf8')).hexdigest() + password_org).encode('utf8')
-        ).hexdigest()
-        client_socket.send(password.encode('utf-8'))
-        if client_socket.recv(2048).decode('utf-8') != '100':
-            print("비밀번호 틀림")
+        # 1: SEND VERSION
+        # 100 OK    -> Approved
+        # 200 Not Matched Version   -> not approved
+        client_socket.send(version.encode('utf-8'))
+        received_data = client_socket.recv(2048).decode('utf-8')
+        if received_data == "200":
+            print("Version is not compatible.")
+            client_socket.close()
+            return
+        elif received_data != "100":
             client_socket.close()
             return
 
@@ -251,16 +254,16 @@ def client(host, port, version):
         del prime, g
         gc.collect()
 
-        # 4: SEND VERSION
-        # 100 OK    -> Approved
-        # 200 Not Matched Version   -> not approved
-        client_socket.send(version.encode('utf-8'))
-        received_data = client_socket.recv(2048).decode('utf-8')
-        if received_data == "200":
-            print("버전이 호환되지 않음")
-            client_socket.close()
-            return
-        elif received_data != "100":
+        # 4: SEND HASHED PASSWORD
+        # 100 OK    -> RIGHT
+        # 300 WRONG     -> WRONG PASSWORD
+        password_org = input("Please enter the password: ")
+        password = hashlib.sha256(
+            (hashlib.sha256(str(int(port) ** 2).encode('utf8')).hexdigest() + password_org).encode('utf8')
+        ).hexdigest()
+        client_socket.send(password.encode('utf-8'))
+        if client_socket.recv(2048).decode('utf-8') != '100':
+            print("Wrong Password")
             client_socket.close()
             return
 
@@ -298,6 +301,7 @@ def client(host, port, version):
         # 300 WRONG     -> WRONG KEY
         client_socket.send(hashlib.sha256(str(keys[0]).encode('utf-8')).hexdigest().encode('utf-8'))
         if client_socket.recv(2048).decode('utf-8') != "100":
+            print("MITM attack suspected")
             client_socket.close()
             return
 
@@ -309,7 +313,7 @@ def client(host, port, version):
         else:
             client_socket.send('100'.encode('utf-8'))
 
-        print("----------채팅 시작----------")
+        print("----------Start Chat----------")
         thread = start_thread(client_socket, keys)
         try:
             while thread[0].is_alive() and thread[1].is_alive():
